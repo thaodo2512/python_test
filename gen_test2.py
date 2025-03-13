@@ -129,4 +129,21 @@ def pdr_directive(name: str, arguments: List[str], options: dict, content: List[
     if not json_files:
         raise ValueError("At least one JSON file must be provided as an argument")
     parser = PDRParser(json_files)
-    parent = nodes
+    parent = nodes.section()
+    parser.generate_sphinx_tables(state.app, state, parent)
+    return parent.children
+
+def setup(app: Sphinx):
+    """Register the custom directive with Sphinx."""
+    app.add_directive('pldm-pdr-tables', pdr_directive)
+    return {"version": "1.0", "parallel_read_safe": True}
+
+if __name__ == "__main__":
+    # For testing outside Sphinx
+    from sphinx.testing.util import SphinxTestApp
+    app = SphinxTestApp()
+    json_files = ["pdr_definitions.json"]  # Replace with your JSON files
+    parser = PDRParser(json_files)
+    parent = nodes.section()
+    parser.generate_sphinx_tables(app, app.builder.env.temp_data.get('state'), parent)
+    print(parent.pformat())
