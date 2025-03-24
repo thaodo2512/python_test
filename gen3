@@ -1,0 +1,130 @@
+import json
+import os
+import struct
+from glob import glob
+
+class PDRProcessor:
+    """Class to process PDR JSON files, auto-generate fields, and create binary data."""
+    
+    def __init__(self, json_dir):
+        """Initialize with a directory containing JSON files and load all data."""
+        self.json_dir = json_dir
+        self.data = self._load_all_json()
+        self.type_sizes = {
+            'uint8': 1, 'uint16': 2, 'uint32': 4,
+            'int8': 1, 'int16': 2, 'int32': 4,
+            'enum8': 1, 'enum16': 2, 'bool': 1,
+            'real32': 4
+        }
+        self.string_encodings = {
+            'ascii': 1, 'utf8': 1, 'utf16': 2, 'utf16be': 2, 'utf16le': 2
+        }
+
+    def _load_all_json(self):
+        """Load all JSON files from the directory and return combined data."""
+        all_data = []
+        json_files = glob(os.path.join(self.json_dir, '*.json'))
+        if not json_files:
+            raise FileNotFoundError(f"No JSON files found in directory: {self.json_dir}")
+        for json_file in json_files:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                all_data.extend(json.load(f))
+        return all_data
+
+    def flatten_fields(self, json_fields):
+        """Extract all leaf fields from the JSON, ignoring 'struct' groupings."""
+        flat_fields = []
+        for field in json_fields:
+            if field['type'] == 'struct':
+                # Recurse into subfields of a struct
+                flat_fields.extend(self.flatten_fields(field.get('fields', [])))
+            else:
+                # Add leaf field (no further nesting)
+                flat_fields.append(field)
+        return flat_fields
+
+    def auto_generate_fields(self):
+        """Auto-generate specific fields like record_handle and pdr_length."""
+        record_counter = 0
+        for pdr in self.data:
+            flat_fields = self.flatten_fields(pdr.get('fields', []))
+            for field in pdr.get('fields', []):
+                if field.get('name') == 'commonHeader' and field.get('type') == 'struct':
+                    subfields = field.get('fields', [])
+                    for subfield in subfields:
+                        if subfield.get('name') == 'record_handle':
+                            subfield['value'] = record_counter
+                            record_counter += 1
+                        elif subfield.get('name') == 'pdr_length':
+                            subfield['value'] = self._calculate_pdr_length(flat_fields)
+                    break
+
+    def _calculate_pdr_length(self, fields):
+        """Calculate the total byte size of the flattened fields."""
+        size = 0
+        for field in fields:
+            if field.get('type') == 'string' and 'value' in field:
+                encoding = field.get('encoding', 'ascii')
+                char_size = self.string_encodings.get(encoding, 1)
+                size += len(field['value']) * char_size
+            else:
+                size += self.type_sizes.get(field.get('type'), 0)
+        return size
+
+    def _serialize_field(self, field):
+        """Serialize a single field into its binary representation."""
+        type_format = {
+            'uint8': 'B', 'uint16': 'H', 'uint32': 'I',
+            'int8': 'b', 'int16': 'h', 'int32': 'i',
+            'enum8': 'B', 'enum16': 'H', 'bool': 'B',
+            'real32': 'f'
+        }
+        if field.get('type') in type_format and 'value' in field:
+            return struct.pack(type_format[field['type']], field['value'])
+        elif field.get('type') == 'string' and 'value' in field:
+            encoding = field.get('encoding', 'ascii')
+            if encoding == 'ascii' or encoding == 'utf8':
+                return field['value'].encode('ascii')
+            elif encoding == 'utf16':
+                return field['value'].encode('utf-16le')
+            elif encoding == 'utf16be':
+                return field['value'].encode('utf-16-be')
+            elif encoding == 'utf16le':
+                return field['value'].encode('utf-16-le')
+            return field['value'].encode('ascii')  # Fallback
+        return b''
+
+    def generate_binary_data(self):
+        """Generate binary data for all flattened PDR fields."""
+        binary_data = b''
+        for pdr in self.data:
+            flat_fields = self.flatten_fields(pdr.get('fields', []))
+            for field in flat_fields:
+                binary_data += self._serialize_field(field)
+        return binary_data
+
+    def process_and_generate_header(self, output_file='pdr_data.h'):
+        """Process all JSON files and generate a C header file with binary data."""
+        self.auto_generate_fields()
+        binary_data = self.generate_binary_data()
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('#ifndef PDR_DATA_H\n')
+            f.write('#define PDR_DATA_H\n\n')
+            f.write('const unsigned char pdr_binary_data[] = {\n')
+            for i in range(0, len(binary_data), 16):
+                line = ', '.join(f'0x{b:02X}' for b in binary_data[i:i+16])
+                f.write(f'    {line},\n')
+            f.write('};\n\n')
+            f.write('#endif /* PDR_DATA_H */\n')
+        print(f"Generated header file: {output_file} with {len(binary_data)} bytes")
+
+def main():
+    json_dir = 'pdr_json_files'  # Replace with your directory path
+    try:
+        processor = PDRProcessor(json_dir)
+        processor.process_and_generate_header()
+    except FileNotFoundError as e:
+        print(e)
+
+if __name__ == "__main__":
+    main()
