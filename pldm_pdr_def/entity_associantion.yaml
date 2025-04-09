@@ -1,0 +1,16 @@
+EntityAssociationPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  containerEntityType: uint16
+  containerEntityInstanceNumber: uint16
+  containerEntityContainerID: uint16
+  containedEntityCount: uint8
+  containedEntities:
+    - entityType: uint16
+      entityInstanceNumber: uint16
+      entityContainerID: uint16

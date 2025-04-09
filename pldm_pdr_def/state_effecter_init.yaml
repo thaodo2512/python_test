@@ -1,0 +1,13 @@
+StateEffecterInitializationPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  effecterID: uint16
+  initConditions: bitfield8
+  effecterEnable: enum8
+  stateSetID: uint16
+  initialState: uint8

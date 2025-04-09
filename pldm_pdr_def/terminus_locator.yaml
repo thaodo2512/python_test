@@ -1,0 +1,27 @@
+TerminusLocatorPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  validity: enum8
+  TID: uint8
+  containerID: uint16
+  terminusLocatorType: enum8
+  terminusLocatorValueSize: uint8
+  terminusLocatorValue:
+    # Fields vary based on terminusLocatorType
+    UID:
+      terminusInstance: uint8
+      deviceUID: UUID
+    MCTP_EID:
+      EID: uint8
+    SMBusRelative:
+      UID: UUID
+      busNumber: uint8
+      slaveAddress: uint8
+    systemSoftware:
+      softwareClass: enum8
+      UUID: UUID

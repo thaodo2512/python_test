@@ -1,0 +1,13 @@
+NumericEffecterInitializationPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  effecterID: uint16
+  initConditions: bitfield8
+  effecterEnable: enum8
+  effecterDataSize: enum8
+  initialValue: uint8/sint8/uint16/sint16/uint32/sint32

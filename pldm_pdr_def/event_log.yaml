@@ -1,0 +1,13 @@
+PLDMEventLogPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  logSize: uint32
+  supportedLogClearingPolicies: bitfield8
+  entryIDTimeout: uint8
+  perEntryOverhead: uint8
+  allocationGranularity: uint8
+  percentUsedResolution: uint8

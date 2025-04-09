@@ -1,0 +1,17 @@
+RedfishActionPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  actionPDRIndex: uint8
+  relatedResourceCount: uint16
+  relatedResourceIDs:
+    - resourceID: uint32
+  actionCount: uint8
+  actions:
+    - actionNameLengthBytes: uint8
+      actionName: utf8string
+      actionPathLengthBytes: uint8
+      actionPath: utf8string

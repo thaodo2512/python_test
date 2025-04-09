@@ -1,0 +1,6 @@
+commonHeader:
+  recordHandle: uint32
+  PDRHeaderVersion: uint8
+  PDRType: uint8
+  recordChangeNumber: uint16
+  dataLength: uint16

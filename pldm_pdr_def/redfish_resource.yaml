@@ -1,0 +1,28 @@
+RedfishResourcePDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  resourceID: uint32
+  resourceFlags: bitfield8
+  containingResourceID: uint32
+  proposedContainingResourceLengthBytes: uint16
+  proposedContainingResourceName: strUTF-8
+  subURILengthBytes: uint16
+  subURI: strUTF-8
+  additionalResourceIDCount: uint16
+  additionalResourceIDs:
+    - resourceID: uint32
+      subURILengthBytes: uint16
+      subURI: strUTF-8
+  majorSchemaVersion: ver32
+  majorSchemaDictionaryLengthBytes: uint16
+  majorSchemaDictionarySignature: uint32
+  majorSchemaNameLength: uint8
+  majorSchemaName: strUTF-8
+  oemCount: uint16
+  oemNames:
+    - nameLengthBytes: uint16
+      name: strUTF-8

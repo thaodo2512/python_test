@@ -1,0 +1,19 @@
+NumericSensorInitializationPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  sensorID: uint16
+  initConditions: bitfield8
+  sensorEnable: enum8
+  thresholdInitMask: bitfield8
+  sensorDataSize: enum8
+  upperThresholdWarning: uint8/sint8/uint16/sint16/uint32/sint32
+  upperThresholdCritical: uint8/sint8/uint16/sint16/uint32/sint32
+  upperThresholdFatal: uint8/sint8/uint16/sint16/uint32/sint32
+  lowerThresholdWarning: uint8/sint8/uint16/sint16/uint32/sint32
+  lowerThresholdCritical: uint8/sint8/uint16/sint16/uint32/sint32
+  lowerThresholdFatal: uint8/sint8/uint16/sint16/uint32/sint32

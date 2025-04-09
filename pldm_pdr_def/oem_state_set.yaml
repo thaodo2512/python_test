@@ -1,0 +1,14 @@
+OEMStateSetPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  vendorIANA: uint32
+  OEMStateSetID: uint16
+  stateCount: uint8
+  states:
+    - stateValue: uint8
+      stateName: strUTF-16BE

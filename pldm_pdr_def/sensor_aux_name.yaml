@@ -1,0 +1,13 @@
+SensorAuxiliaryNamesPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  sensorID: uint16
+  nameCount: uint8
+  names:
+    - languageTag: strASCII
+      name: strUTF-16BE

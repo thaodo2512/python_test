@@ -1,0 +1,24 @@
+CompactNumericSensorPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  sensorID: uint16
+  entityType: uint16
+  entityInstanceNumber: uint16
+  containerID: uint16
+  sensorNameStringByteLength: uint8
+  baseUnit: enum8
+  unitModifier: sint8
+  occurrenceRate: enum8
+  rangeFieldSupport: bitfield8
+  warningHigh: sint32
+  warningLow: sint32
+  criticalHigh: sint32
+  criticalLow: sint32
+  fatalHigh: sint32
+  fatalLow: sint32
+  sensorNameString: strUTF-8

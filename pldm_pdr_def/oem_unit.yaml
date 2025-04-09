@@ -1,0 +1,11 @@
+OEMUnitPDR:
+  commonHeader:
+    recordHandle: uint32
+    PDRHeaderVersion: uint8
+    PDRType: uint8
+    recordChangeNumber: uint16
+    dataLength: uint16
+  PLDMTerminusHandle: uint16
+  vendorIANA: uint32
+  OEMUnitHandle: uint16
+  unitName: strUTF-16BE
