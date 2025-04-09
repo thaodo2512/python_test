@@ -1,0 +1,64 @@
+[
+    {
+        "pdr_type": "CompactNumericSensorPDR",
+        "header": {
+            "commonHeader": {
+                "recordHandle": "1",
+                "PDRHeaderVersion": "1",
+                "PDRType": "1",
+                "recordChangeNumber": "1",
+                "dataLength": "10"
+            }
+        },
+        "body": {
+            "PLDMTerminusHandle": "1",
+            "sensorID": "10",
+            "entityType": "10",
+            "entityInstanceNumber": "10",
+            "containerID": "10",
+            "sensorNameStringByteLength": "10",
+            "baseUnit": "10",
+            "unitModifier": "10",
+            "occurrenceRate": "10",
+            "rangeFieldSupport": "10",
+            "warningHigh": "10",
+            "warningLow": "10",
+            "criticalHigh": "10",
+            "criticalLow": "10",
+            "fatalHigh": "10",
+            "fatalLow": "10",
+            "sensorNameString": "test_2"
+        }
+    },
+    {
+        "pdr_type": "CompactNumericSensorPDR",
+        "header": {
+            "commonHeader": {
+                "recordHandle": "1",
+                "PDRHeaderVersion": "1",
+                "PDRType": "1",
+                "recordChangeNumber": "1",
+                "dataLength": "10"
+            }
+        },
+        "body": {
+            "PLDMTerminusHandle": "1",
+            "sensorID": "30",
+            "entityType": "10",
+            "entityInstanceNumber": "10",
+            "containerID": "10",
+            "sensorNameStringByteLength": "10",
+            "baseUnit": "10",
+            "unitModifier": "10",
+            "occurrenceRate": "10",
+            "rangeFieldSupport": "10",
+            "warningHigh": "10",
+            "warningLow": "10",
+            "criticalHigh": "10",
+            "criticalLow": "10",
+            "fatalHigh": "10",
+            "fatalLow": "10",
+            "sensorNameString": "test_3"
+        }
+    }
+]
