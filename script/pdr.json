@@ -1,0 +1,21 @@
+{
+    "terminus_locator": [
+        {
+            "record_handle": 1,
+            "version": 1,
+            "pdr_type": 2,
+            "record_change_numer": 1,
+            "length": "auto",
+            "terminus_locator": 0,
+            "validity": 1,
+            "tid": 1,
+            "container_id": 1,
+            "terminus_locator_type": 1,
+            "terminus_locator_value_size": 17,
+            "terminus_locator_value": {
+                "terminus_instance": 1,
+                "uuid": 0
+            }
+        }
+    ]
+}
