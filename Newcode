@@ -1,0 +1,280 @@
+from docutils import nodes
+from docutils.parsers.rst import directives
+from sphinx.util.docutils import SphinxDirective
+import json
+import yaml
+import os
+
+def flatten_dict(d, parent_key='', sep='.'):
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+class YamlToTableDirective(SphinxDirective):
+    has_content = True
+    option_spec = {
+        'file': directives.unchanged,
+    }
+
+    def run(self):
+        if 'file' in self.options:
+            file_path = self.options['file']
+            abs_file_path = os.path.join(self.env.srcdir, file_path)
+            with open(abs_file_path, 'r') as f:
+                data = yaml.safe_load(f)
+        elif self.content:
+            content = '\n'.join(self.content)
+            data = yaml.safe_load(content)
+        else:
+            raise self.error('No content or file specified for yaml-to-table directive')
+
+        flattened = flatten_dict(data)
+
+        table = nodes.table()
+        tgroup = nodes.tgroup(cols=2)
+        table += tgroup
+
+        for _ in range(2):
+            colspec = nodes.colspec(colwidth=1)
+            tgroup += colspec
+
+        thead = nodes.thead()
+        tgroup += thead
+        row = nodes.row()
+        thead += row
+        entry = nodes.entry()
+        row += entry
+        entry += nodes.paragraph(text='Key')
+        entry = nodes.entry()
+        row += entry
+        entry += nodes.paragraph(text='Value')
+
+        tbody = nodes.tbody()
+        tgroup += tbody
+
+        for key, value in sorted(flattened.items()):
+            row = nodes.row()
+            tbody += row
+            entry = nodes.entry()
+            row += entry
+            entry += nodes.paragraph(text=str(key))
+            entry = nodes.entry()
+            row += entry
+            entry += nodes.paragraph(text=str(value))
+
+        return [table]
+
+class JsonToTableDirective(SphinxDirective):
+    has_content = True
+    option_spec = {
+        'file': directives.unchanged,
+    }
+
+    def run(self):
+        if 'file' in self.options:
+            file_path = self.options['file']
+            abs_file_path = os.path.join(self.env.srcdir, file_path)
+            with open(abs_file_path, 'r') as f:
+                data = json.load(f)
+        elif self.content:
+            content = '\n'.join(self.content)
+            data = json.loads(content)
+        else:
+            raise self.error('No content or file specified for json-to-table directive')
+
+        flattened = flatten_dict(data)
+
+        table = nodes.table()
+        tgroup = nodes.tgroup(cols=2)
+        table += tgroup
+
+        for _ in range(2):
+            colspec = nodes.colspec(colwidth=1)
+            tgroup += colspec
+
+        thead = nodes.thead()
+        tgroup += thead
+        row = nodes.row()
+        thead += row
+        entry = nodes.entry()
+        row += entry
+        entry += nodes.paragraph(text='Key')
+        entry = nodes.entry()
+        row += entry
+        entry += nodes.paragraph(text='Value')
+
+        tbody = nodes.tbody()
+        tgroup += tbody
+
+        for key, value in sorted(flattened.items()):
+            row = nodes.row()
+            tbody += row
+            entry = nodes.entry()
+            row += entry
+            entry += nodes.paragraph(text=str(key))
+            entry = nodes.entry()
+            row += entry
+            entry += nodes.paragraph(text=str(value))
+
+        return [table]
+
+def summarize_schema(properties, prefix='', rows=None):
+    if rows is None:
+        rows = []
+    for key, val in properties.items():
+        field_path = f"{prefix}{key}" if prefix else key
+        type_ = val.get('type', 'unknown')
+        desc = val.get('description', '')
+        constraints = []
+        if 'enum' in val:
+            constraints.append(f"Enum: {', '.join(map(str, val['enum']))}")
+        if 'minimum' in val or 'maximum' in val:
+            constraints.append(f"Range: {val.get('minimum', '-')} to {val.get('maximum', '-')}")
+        if 'format' in val:
+            constraints.append(f"Format: {val['format']}")
+        if 'minItems' in val:
+            constraints.append(f"Min items: {val['minItems']}")
+        if 'maxItems' in val:
+            constraints.append(f"Max items: {val['maxItems']}")
+        constraints_str = '; '.join(constraints) or 'None'
+        rows.append((field_path, type_, desc, constraints_str))
+        
+        if type_ == 'object' and 'properties' in val:
+            summarize_schema(val['properties'], f"{field_path}.", rows)
+        elif type_ == 'array' and 'items' in val and isinstance(val['items'], dict) and 'properties' in val['items']:
+            summarize_schema(val['items']['properties'], f"{field_path}[].", rows)
+    return rows
+
+def build_schema_tree(properties):
+    tree = {}
+    for key, val in properties.items():
+        type_ = val.get('type', 'unknown')
+        desc = val.get('description', '')
+        constraints = []
+        if 'enum' in val:
+            constraints.append(f"Enum: {', '.join(map(str, val['enum']))}")
+        if 'minimum' in val or 'maximum' in val:
+            constraints.append(f"Range: {val.get('minimum', '-')} to {val.get('maximum', '-')}")
+        if 'format' in val:
+            constraints.append(f"Format: {val['format']}")
+        if 'minItems' in val:
+            constraints.append(f"Min items: {val['minItems']}")
+        if 'maxItems' in val:
+            constraints.append(f"Max items: {val['maxItems']}")
+        constraints_str = '; '.join(constraints) or 'None'
+        node = {'type': type_, 'desc': desc, 'cons': constraints_str}
+        if type_ == 'array':
+            node['type'] = 'array'
+            if 'items' in val and isinstance(val['items'], dict):
+                if val['items'].get('type') == 'object':
+                    node['type'] = 'array of objects'
+        if type_ == 'object' and 'properties' in val:
+            node['children'] = build_schema_tree(val['properties'])
+        elif type_ == 'array' and 'items' in val and isinstance(val['items'], dict) and 'properties' in val['items']:
+            node['children'] = build_schema_tree(val['items']['properties'])
+            node['array'] = True
+        tree[key] = node
+    return tree
+
+def filter_tree(tree, includes, path=''):
+    new_tree = {}
+    for key, node in tree.items():
+        full_path = f"{path}{key}" if path else key
+        include_branch = any(full_path.startswith(inc) for inc in includes)
+        if include_branch or ('children' in node and filter_tree(node['children'], includes, full_path + '.')):
+            new_node = node.copy()
+            if 'children' in node:
+                new_node['children'] = filter_tree(node['children'], includes, full_path + '.')
+            new_tree[key] = new_node
+    return new_tree
+
+def render_html_tree(tree):
+    html = ''
+    for key, node in sorted(tree.items()):
+        field = key
+        if node.get('array', False):
+            field += '[]'
+        row_text = f'<strong>{field}</strong> ({node["type"]}) - {node["desc"]} | Constraints: {node["cons"]}'
+        if 'children' in node:
+            html += f'<details><summary>{row_text}</summary>'
+            html += render_html_tree(node['children'])
+            html += '</details>'
+        else:
+            html += f'<div style="margin-left: 20px;">{row_text}</div>'
+    return html
+
+class SchemaToTableDirective(SphinxDirective):
+    has_content = True
+    option_spec = {
+        'file': directives.unchanged,
+        'include': directives.unchanged,
+        'collapsible': directives.flag,
+    }
+
+    def run(self):
+        if 'file' in self.options:
+            file_path = os.path.join(self.env.srcdir, self.options['file'])
+            with open(file_path, 'r') as f:
+                schema = json.load(f)
+        elif self.content:
+            schema = json.loads('\n'.join(self.content))
+        else:
+            raise self.error('No schema content or file specified')
+
+        properties = schema.get('properties', {})
+        tree = build_schema_tree(properties)
+
+        if 'include' in self.options:
+            includes = [f.strip() for f in self.options['include'].split(',')]
+            tree = filter_tree(tree, includes)
+
+        if 'collapsible' in self.options and self.env.app.builder.format == 'html':
+            html = f'<div class="schema-summary">{render_html_tree(tree)}</div>'
+            return [nodes.raw('', html, format='html')]
+        else:
+            rows = summarize_schema(properties)
+            if 'include' in self.options:
+                includes = [f.strip() for f in self.options['include'].split(',')]
+                rows = [r for r in rows if any(r[0].startswith(inc) or r[0].startswith(inc + '.') for inc in includes)]
+
+            table = nodes.table()
+            tgroup = nodes.tgroup(cols=4)
+            table += tgroup
+            for _ in range(4):
+                tgroup += nodes.colspec(colwidth=1)
+
+            thead = nodes.thead()
+            tgroup += thead
+            row = nodes.row()
+            thead += row
+            for header in ['Field Path', 'Type', 'Description', 'Constraints']:
+                entry = nodes.entry()
+                row += entry
+                entry += nodes.paragraph(text=header)
+
+            tbody = nodes.tbody()
+            tgroup += tbody
+            for field, type_, desc, cons in sorted(rows):
+                row = nodes.row()
+                tbody += row
+                for text in [field, type_, desc, cons]:
+                    entry = nodes.entry()
+                    row += entry
+                    entry += nodes.paragraph(text=str(text))
+
+            return [table]
+
+def setup(app):
+    app.add_directive('yaml-to-table', YamlToTableDirective)
+    app.add_directive('json-to-table', JsonToTableDirective)
+    app.add_directive('schema-to-table', SchemaToTableDirective)
+    return {
+        'version': '0.1',
+        'parallel_read_safe': True,
+        'parallel_write_safe': True,
+    }
