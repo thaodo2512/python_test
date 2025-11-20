@@ -10,10 +10,10 @@
 # docker build -f Dockerfile.base --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t zephyrprojectrtos/ci-base:main .
 # docker build -f Dockerfile.ci --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t zephyrprojectrtos/ci:main .
 
-
 # Configuration
 DOCKER_IMAGE="zephyrprojectrtos/ci:main"  # Official Zephyr CI image (slimmer, no VNC for build-only workflows)
 WORKSPACE_DIR="$(pwd)/zephyrproject"  # Workspace directory (adjust if needed)
+ZEPHYR_SDK_DIR="/opt/toolchains/zephyr-sdk-0.17.4"  # Path to SDK in the Docker image (updated to latest known version)
 
 # Get host UID and GID to avoid permission issues with mounted volumes
 HOST_UID=$(id -u)
@@ -23,6 +23,9 @@ HOST_GID=$(id -g)
 run_docker() {
     docker run --rm -it \
         --user "${HOST_UID}:${HOST_GID}" \
+        --env ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_DIR}" \
+        --env CMAKE_PREFIX_PATH="${ZEPHYR_SDK_DIR}/cmake" \
+        --env ZEPHYR_TOOLCHAIN_VARIANT=zephyr \
         -v "${WORKSPACE_DIR}:/workdir" \
         -w /workdir/zephyr \
         "${DOCKER_IMAGE}" \
@@ -56,6 +59,9 @@ case "$1" in
 
         docker run --rm -it \
             --user "${HOST_UID}:${HOST_GID}" \
+            --env ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_DIR}" \
+            --env CMAKE_PREFIX_PATH="${ZEPHYR_SDK_DIR}/cmake" \
+            --env ZEPHYR_TOOLCHAIN_VARIANT=zephyr \
             -v "${WORKSPACE_DIR}:/workdir" \
             -w /workdir \
             "${DOCKER_IMAGE}" \
@@ -63,17 +69,16 @@ case "$1" in
 
         docker run --rm -it \
             --user "${HOST_UID}:${HOST_GID}" \
+            --env ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_DIR}" \
+            --env CMAKE_PREFIX_PATH="${ZEPHYR_SDK_DIR}/cmake" \
+            --env ZEPHYR_TOOLCHAIN_VARIANT=zephyr \
             -v "${WORKSPACE_DIR}:/workdir" \
             -w /workdir \
             "${DOCKER_IMAGE}" \
             west update
 
-        docker run --rm -it \
-            --user "${HOST_UID}:${HOST_GID}" \
-            -v "${WORKSPACE_DIR}:/workdir" \
-            -w /workdir \
-            "${DOCKER_IMAGE}" \
-            west zephyr-export
+        # Note: Skipped 'west zephyr-export' as it's optional and not required for Docker-based builds inside the workspace.
+        # It registers Zephyr for external CMake find_package, but west build handles it internally.
 
         echo "Zephyr workspace initialized in '${WORKSPACE_DIR}'."
         ;;
