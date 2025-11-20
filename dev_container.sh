@@ -1,207 +1,150 @@
 #!/bin/bash
 
-# zephyr-docker-helper.sh
-#
-# A wrapper script to run Zephyr's 'west' tool inside the official Docker container.
-# This keeps your host system 100% clean, as all tools and the SDK
-# are contained within the Docker image.
+# Bash script for Zephyr OS development using Docker.
+# Supports initializing the workspace from scratch, building projects,
+# running local CI tests with Twister, running tests in QEMU,
+# and cleaning up the workspace + Docker image.
+# build docker locally
+# git clone https://github.com/zephyrproject-rtos/docker-image.git
+# cd docker-image
+# docker build -f Dockerfile.base --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t zephyrprojectrtos/ci-base:main .
+# docker build -f Dockerfile.ci --build-arg UID=$(id -u) --build-arg GID=$(id -g) -t zephyrprojectrtos/ci:main .
 
-# --- CONFIGURATION ---
-# You can update this to a specific version tag if you need to.
-# See available tags: https://hub.docker.com/r/zephyrprojectrtos/ci/tags
-# Alternatively, override via environment variable: ZEPHYR_IMAGE_NAME
-# Recommended: zephyrprojectrtos/ci:latest (minimal, no VNC noise)
-IMAGE_NAME="${ZEPHYR_IMAGE_NAME:-zephyrprojectrtos/ci:latest}"
 
-# SDK path inside the container (based on common installation; override if needed)
-SDK_PATH="/opt/toolchains/zephyr-sdk-0.17.4"
+# Configuration
+DOCKER_IMAGE="zephyrprojectrtos/ci:main"  # Official Zephyr CI image (slimmer, no VNC for build-only workflows)
+WORKSPACE_DIR="$(pwd)/zephyrproject"  # Workspace directory (adjust if needed)
 
-# Get the full path to the directory this script is in, and 'cd' there.
-# This ensures the script can be run from anywhere.
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-cd "$SCRIPT_DIR"
+# Get host UID and GID to avoid permission issues with mounted volumes
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
 
-# This is the Zephyr workspace root (where .west is)
-readonly WORKSPACE_DIR="$SCRIPT_DIR"
-
-# --- HELPER FUNCTIONS ---
-
-# Check if Docker is installed
-if ! command -v docker &> /dev/null; then
-  echo "Error: Docker is not installed. Please install Docker to use this script."
-  exit 1
-fi
-
-# Usage/help function
-usage() {
-  echo "Usage: $0 [COMMAND] [OPTIONS]"
-  echo ""
-  echo "This script runs Zephyr's 'west' tool inside a Docker container."
-  echo "Special commands (not passed to 'west'):"
-  echo "  setup         Set up a new Zephyr workspace from scratch (runs 'west init' and 'west update')."
-  echo "                Usage: $0 setup [-m MANIFEST_URL] [--mr REVISION]"
-  echo "                Default: -m https://github.com/zephyrproject-rtos/zephyr --mr main"
-  echo "  pull          Download or update the Docker image."
-  echo "  clean         Clean local build artifacts (build/, twister-out/, zephyr/.cache/)."
-  echo "  shell         Enter an interactive shell inside the Docker container."
-  echo "  help          Show this help message."
-  echo ""
-  echo "All other commands are passed to 'west' (e.g., '$0 build -b nrf52840dk_nrf52840')."
-  echo "For 'flash' or 'debug', the container runs with privileged access (Linux only)."
-  echo ""
-  echo "Environment variables:"
-  echo "  ZEPHYR_IMAGE_NAME  Override the Docker image name/tag (default: $IMAGE_NAME)."
-  echo "  Alternatively, you can use the GHCR image: ghcr.io/zephyrproject-rtos/ci:latest"
-  exit 0
+# Function to run commands inside the Docker container
+run_docker() {
+    docker run --rm -it \
+        --user "${HOST_UID}:${HOST_GID}" \
+        -v "${WORKSPACE_DIR}:/workdir" \
+        -w /workdir/zephyr \
+        "${DOCKER_IMAGE}" \
+        "$@"
 }
 
-# --- SPECIAL COMMANDS (Not passed to 'west') ---
+# Function to pull the Docker image if not present
+pull_image() {
+    if ! docker image inspect "${DOCKER_IMAGE}" &> /dev/null; then
+        echo "Pulling Docker image: ${DOCKER_IMAGE}"
+        docker pull "${DOCKER_IMAGE}"
+    fi
+}
 
-# Handle no arguments or help
-if [ $# -eq 0 ] || [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-  usage
-fi
+# Main logic
+case "$1" in
+    init)
+        pull_image
 
-# 'setup' command:
-# Sets up a new Zephyr workspace from scratch using 'west init' and 'west update' inside Docker.
-if [ "$1" == "setup" ]; then
-  shift  # Shift to process additional arguments
+        # Initialize the Zephyr workspace from scratch
+        if [ -d "${WORKSPACE_DIR}" ] && [ "$(ls -A "${WORKSPACE_DIR}")" ]; then
+            echo "Warning: Workspace directory '${WORKSPACE_DIR}' is not empty."
+            read -p "Continue and potentially overwrite files? (y/n): " confirm
+            if [ "$confirm" != "y" ]; then
+                exit 1
+            fi
+        fi
 
-  # Default values for west init
-  MANIFEST_URL="https://github.com/zephyrproject-rtos/zephyr"
-  MANIFEST_REV="main"
+        mkdir -p "${WORKSPACE_DIR}"
+        cd "${WORKSPACE_DIR}" || exit 1
 
-  # Parse optional arguments
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -m)
-        MANIFEST_URL="$2"
-        shift 2
+        docker run --rm -it \
+            --user "${HOST_UID}:${HOST_GID}" \
+            -v "${WORKSPACE_DIR}:/workdir" \
+            -w /workdir \
+            "${DOCKER_IMAGE}" \
+            west init -m https://github.com/zephyrproject-rtos/zephyr --mr main
+
+        docker run --rm -it \
+            --user "${HOST_UID}:${HOST_GID}" \
+            -v "${WORKSPACE_DIR}:/workdir" \
+            -w /workdir \
+            "${DOCKER_IMAGE}" \
+            west update
+
+        docker run --rm -it \
+            --user "${HOST_UID}:${HOST_GID}" \
+            -v "${WORKSPACE_DIR}:/workdir" \
+            -w /workdir \
+            "${DOCKER_IMAGE}" \
+            west zephyr-export
+
+        echo "Zephyr workspace initialized in '${WORKSPACE_DIR}'."
         ;;
-      --mr)
-        MANIFEST_REV="$2"
-        shift 2
+
+    build)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Usage: $0 build [west build options]"
+            exit 1
+        fi
+        run_docker west build "$@"
         ;;
-      *)
-        echo "Unknown option: $1"
-        usage
+
+    ci-test)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Usage: $0 ci-test [west twister options]"
+            echo "Example: $0 ci-test -p qemu_x86 --all"
+            exit 1
+        fi
+        run_docker west twister --inline-logs "$@"
         ;;
-    esac
-  done
 
-  # Check if workspace is already initialized
-  if [ -d ".west" ]; then
-    echo "Error: Workspace already initialized (.west directory exists). Run 'clean' first or use a new directory."
-    exit 1
-  fi
+    qemu-test)
+        shift
+        run_docker west build -t run "$@"
+        ;;
 
-  echo "Setting up Zephyr workspace from scratch..."
-  echo "Pulling Docker image: $IMAGE_NAME"
-  docker pull "$IMAGE_NAME" || { echo "Failed to pull image."; exit 1; }
+    clean)
+        echo "=== Cleanup ==="
 
-  # Build core Docker command with SDK env vars
-  DOCKER_BASE=(
-    "docker" "run" "--rm"
-    "-v" "${WORKSPACE_DIR}:/workspace"
-    "-w" "/workspace"
-    "--user" "$(id -u):$(id -g)"
-    "-e" "ZEPHYR_TOOLCHAIN_VARIANT=zephyr"
-    "-e" "ZEPHYR_SDK_INSTALL_DIR=${SDK_PATH}"
-    "${IMAGE_NAME}"
-  )
+        # Clean workspace/repo
+        if [ -d "${WORKSPACE_DIR}" ]; then
+            echo "Workspace found: ${WORKSPACE_DIR}"
+            read -p "Delete the entire workspace (all cloned repos, builds, etc.)? [y/N]: " confirm_ws
+            if [[ "$confirm_ws" =~ ^[Yy]$ ]]; then
+                rm -rf "${WORKSPACE_DIR}"
+                echo "Workspace deleted."
+            else
+                echo "Workspace kept."
+            fi
+        else
+            echo "No workspace directory found (${WORKSPACE_DIR})."
+        fi
 
-  # Run 'west init'
-  echo "Running: west init -m $MANIFEST_URL --mr $MANIFEST_REV"
-  "${DOCKER_BASE[@]}" "west" "init" "-m" "$MANIFEST_URL" "--mr" "$MANIFEST_REV" || { echo "west init failed."; exit 1; }
+        # Clean Docker image
+        if docker image inspect "${DOCKER_IMAGE}" &> /dev/null; then
+            echo "Docker image found: ${DOCKER_IMAGE}"
+            read -p "Remove the Docker image (will be re-downloaded next time)? [y/N]: " confirm_img
+            if [[ "$confirm_img" =~ ^[Yy]$ ]]; then
+                docker rmi "${DOCKER_IMAGE}"
+                echo "Docker image removed."
+            else
+                echo "Docker image kept."
+            fi
+        else
+            echo "Docker image ${DOCKER_IMAGE} not present on this machine."
+        fi
 
-  # Run 'west update' (source env.sh for completeness)
-  echo "Running: west update"
-  "${DOCKER_BASE[@]}" "bash" "-c" "source /workspace/zephyr/zephyr-env.sh && exec west update" || { echo "west update failed."; exit 1; }
+        echo "Cleanup complete."
+        ;;
 
-  echo "Setup complete. Workspace initialized."
-  exit 0
-fi
-
-# 'pull' command:
-# Use this to download or update the Docker build environment.
-if [ "$1" == "pull" ]; then
-  echo "Pulling Docker image: $IMAGE_NAME"
-  docker pull "$IMAGE_NAME"
-  exit $?
-fi
-
-# 'clean' command:
-# This runs locally to clean up build artifacts.
-if [ "$1" == "clean" ]; then
-  echo "Cleaning local build artifacts (build/, twister-out/, zephyr/.cache/)..."
-  rm -rf build/ twister-out/ zephyr/.cache/
-  echo "Clean complete."
-  exit $?
-fi
-
-# 'shell' command:
-# Enter an interactive shell in the container for debugging or manual commands.
-# Sets SDK env vars and sources zephyr-env.sh.
-if [ "$1" == "shell" ]; then
-  echo "Starting interactive shell in Docker container..."
-  DOCKER_CMD=(
-    "docker" "run" "--rm" "-it"
-    "-v" "${WORKSPACE_DIR}:/workspace"
-    "-w" "/workspace"
-    "--user" "$(id -u):$(id -g)"
-    "-e" "ZEPHYR_TOOLCHAIN_VARIANT=zephyr"
-    "-e" "ZEPHYR_SDK_INSTALL_DIR=${SDK_PATH}"
-    "${IMAGE_NAME}"
-    "bash" "-c" "source /workspace/zephyr/zephyr-env.sh && exec /bin/bash"
-  )
-  exec "${DOCKER_CMD[@]}"
-fi
-
-# --- DOCKER RUN ---
-# All other commands are passed directly to 'west' inside the container.
-
-echo "--- Zephyr Docker Build ---"
-
-# Build the core docker run command
-# --rm: Automatically remove the container when it exits.
-# -v: Mount the current directory (your workspace) into '/workspace' in the container.
-# -w: Set the working directory inside the container to '/workspace'.
-# --user: Run as your host user/group. This is CRITICAL to avoid
-#         'root'-owned files being created in your workspace.
-DOCKER_CMD=(
-  "docker" "run" "--rm"
-  "-v" "${WORKSPACE_DIR}:/workspace"
-  "-w" "/workspace"
-  "--user" "$(id -u):$(id -g)"
-  "-e" "ZEPHYR_TOOLCHAIN_VARIANT=zephyr"
-  "-e" "ZEPHYR_SDK_INSTALL_DIR=${SDK_PATH}"
-)
-
-# 'flash' command (and 'debug') is special.
-# It needs access to your host's USB devices (J-Link, etc.).
-# This is complex and platform-specific (this setup is for Linux).
-# Warning: Use with caution, as --privileged grants broad access.
-if [ "$1" == "flash" ] || [ "$1" == "debug" ]; then
-  echo ">>> WARNING: 'flash'/'debug' requires privileged host access. <<<"
-  # --privileged: Gives the container full access to host devices.
-  # -v /dev:/dev: Mounts the host's device tree.
-  DOCKER_CMD+=(
-    "--privileged"
-    "-v" "/dev:/dev"
-  )
-fi
-
-# Add the image name and wrap the command:
-# Use bash to set SDK env vars, source zephyr-env.sh, then run 'west' with args.
-# The '--' separates bash args from west args.
-DOCKER_CMD+=(
-  "${IMAGE_NAME}"
-  "bash" "-c" "source /workspace/zephyr/zephyr-env.sh && exec west \"\$@\"" "--"
-)
-DOCKER_CMD+=( "$@" )
-
-# --- EXECUTE ---
-# Run the command we just built.
-# 'exec' replaces this script process with the docker process.
-echo "Running: ${DOCKER_CMD[*]}"
-exec "${DOCKER_CMD[@]}"
+    *)
+        echo "Usage: $0 {init|build|ci-test|qemu-test|clean} [options]"
+        echo ""
+        echo "Commands:"
+        echo "  init          Initialize Zephyr workspace from scratch"
+        echo "  build         Build a project (pass west build args)"
+        echo "  ci-test       Run local CI with Twister (pass west twister args)"
+        echo "  qemu-test     Run built app in QEMU"
+        echo "  clean         Interactively delete workspace and/or Docker image"
+        exit 1
+        ;;
+esac
