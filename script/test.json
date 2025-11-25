@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-04/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Numeric Sensor PDR Schema (DSP0248 1.3.0, Clause 28.4)",
   "type": "object",
   "additionalProperties": false,
@@ -50,19 +50,22 @@
       "additionalProperties": false,
       "properties": {
         "recordHandle": {
-          "type": [
-            "string",
-            "integer"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
           ],
-          "minimum": 0,
-          "maximum": 4294967295,
           "binaryFormat": "I",
           "description": "uint32; opaque handle (TBD or auto-generated)"
         },
         "PDRHeaderVersion": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 1,
+          "const": 1,
           "binaryFormat": "B",
           "description": "uint8; must be 1"
         },
@@ -76,16 +79,21 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 65535,
+          "default": 0,
           "binaryFormat": "H",
           "description": "uint16; incremented on changes (default 0)"
         },
         "dataLength": {
-          "type": [
-            "string",
-            "integer"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
           ],
-          "minimum": 0,
-          "maximum": 65535,
           "binaryFormat": "H",
           "description": "uint16; calculated data length (TBD)"
         }
@@ -102,6 +110,7 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 65535,
+      "default": 0,
       "binaryFormat": "H",
       "description": "uint16; terminus handle"
     },
@@ -146,6 +155,7 @@
     },
     "sensorAuxiliaryNamesPDR": {
       "type": "boolean",
+      "default": false,
       "binaryFormat": "B",
       "description": "bool8; true if auxiliary names PDR exists"
     },
@@ -166,9 +176,9 @@
     "rateUnit": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 255,
+      "maximum": 7,
       "binaryFormat": "B",
-      "description": "enum8; rate qualifier"
+      "description": "enum8; rate qualifier (0-6 defined, 7 reserved)"
     },
     "baseOEMUnitHandle": {
       "type": "integer",
@@ -194,14 +204,14 @@
     "auxrateUnit": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 255,
+      "maximum": 7,
       "binaryFormat": "B",
-      "description": "enum8; aux rate qualifier"
+      "description": "enum8; aux rate qualifier (0-6 defined, 7 reserved)"
     },
     "rel": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 255,
+      "maximum": 1,
       "binaryFormat": "B",
       "description": "enum8; base/aux relationship: 0=dividedBy, 1=multipliedBy"
     },
@@ -298,12 +308,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -394,12 +404,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -466,12 +476,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -564,12 +574,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -645,12 +655,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -726,12 +736,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -807,12 +817,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -888,12 +898,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -969,12 +979,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
@@ -1050,12 +1060,12 @@
         {
           "type": "integer",
           "minimum": 0,
-          "maximum": 18446744073709551615
+          "maximum": 18446744073709552000
         },
         {
           "type": "integer",
-          "minimum": -9223372036854775808,
-          "maximum": 9223372036854775807
+          "minimum": -9223372036854776000,
+          "maximum": 9223372036854776000
         }
       ],
       "binaryFormat": "variable",
